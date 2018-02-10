@@ -1,0 +1,9 @@
+$(LIBRARY_PATH)(rt_tddft_input_visualization.o):	$(INCDIR)/stdio.fh $(INCDIR)/rtdb.fh /work/adonay/nwchem/trunk/src/tools/install/include/mafdecls.fh $(INCDIR)/inp.fh $(INCDIR)/errquit.fh 
+$(LIBRARY_PATH)(rt_tddft_input_tolerances.o):	$(INCDIR)/stdio.fh $(INCDIR)/rtdb.fh /work/adonay/nwchem/trunk/src/tools/install/include/mafdecls.fh $(INCDIR)/inp.fh $(INCDIR)/errquit.fh 
+$(LIBRARY_PATH)(rt_tddft_input_put_defaults.o):	$(INCDIR)/stdio.fh $(INCDIR)/rtdb.fh /work/adonay/nwchem/trunk/src/tools/install/include/mafdecls.fh $(INCDIR)/inp.fh $(INCDIR)/errquit.fh 
+$(LIBRARY_PATH)(rt_tddft_input_propagator.o):	$(INCDIR)/stdio.fh $(INCDIR)/rtdb.fh /work/adonay/nwchem/trunk/src/tools/install/include/mafdecls.fh $(INCDIR)/inp.fh $(INCDIR)/errquit.fh 
+$(LIBRARY_PATH)(rt_tddft_input_print.o):	$(INCDIR)/stdio.fh $(INCDIR)/rtdb.fh /work/adonay/nwchem/trunk/src/tools/install/include/mafdecls.fh $(INCDIR)/inp.fh $(INCDIR)/errquit.fh 
+$(LIBRARY_PATH)(rt_tddft_input_field.o):	$(INCDIR)/stdio.fh $(INCDIR)/rtdb.fh ../headers/rt_tddft.fh /work/adonay/nwchem/trunk/src/tools/install/include/mafdecls.fh $(INCDIR)/inp.fh $(INCDIR)/errquit.fh 
+$(LIBRARY_PATH)(rt_tddft_input_excite.o):	$(INCDIR)/util.fh $(INCDIR)/sym.fh $(INCDIR)/stdio.fh $(INCDIR)/rtdb.fh ../headers/rt_tddft.fh $(INCDIR)/msgids.fh /work/adonay/nwchem/trunk/src/tools/install/include/mafdecls.fh $(INCDIR)/inp.fh /work/adonay/nwchem/trunk/src/tools/install/include/global.fh $(INCDIR)/geomP.fh $(INCDIR)/geom.fh $(INCDIR)/errquit.fh /work/adonay/nwchem/trunk/src/nwdft/include/cdft.fh $(INCDIR)/bas.fh 
+$(LIBRARY_PATH)(rt_tddft_input_abc.o):	$(INCDIR)/stdio.fh $(INCDIR)/rtdb.fh /work/adonay/nwchem/trunk/src/tools/install/include/mafdecls.fh $(INCDIR)/inp.fh $(INCDIR)/errquit.fh 
+$(LIBRARY_PATH)(rt_tddft_input.o):	$(INCDIR)/stdio.fh $(INCDIR)/rtdb.fh /work/adonay/nwchem/trunk/src/tools/install/include/mafdecls.fh $(INCDIR)/inp.fh $(INCDIR)/errquit.fh 

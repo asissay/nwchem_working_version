@@ -1,0 +1,4 @@
+$(LIBRARY_PATH)(canorg_trans.o):	$(INCDIR)/stdio.fh ../headers/rt_tddft.fh /work/adonay/nwchem/trunk/src/tools/install/include/mafdecls.fh /work/adonay/nwchem/trunk/src/tools/install/include/global.fh $(INCDIR)/errquit.fh 
+$(LIBRARY_PATH)(canorg_init.o):	$(INCDIR)/stdio.fh $(INCDIR)/rtdb.fh ../headers/rt_tddft.fh /work/adonay/nwchem/trunk/src/tools/install/include/mafdecls.fh /work/adonay/nwchem/trunk/src/tools/install/include/global.fh $(INCDIR)/geom.fh $(INCDIR)/errquit.fh 
+$(LIBRARY_PATH)(canorg_clean.o):	$(INCDIR)/stdio.fh $(INCDIR)/rtdb.fh ../headers/rt_tddft.fh /work/adonay/nwchem/trunk/src/tools/install/include/mafdecls.fh /work/adonay/nwchem/trunk/src/tools/install/include/global.fh $(INCDIR)/geom.fh 
+$(LIBRARY_PATH)(canorg_check.o):	$(INCDIR)/stdio.fh ../headers/rt_tddft.fh ../headers/matutils.fh /work/adonay/nwchem/trunk/src/tools/install/include/mafdecls.fh /work/adonay/nwchem/trunk/src/tools/install/include/global.fh $(INCDIR)/errquit.fh 

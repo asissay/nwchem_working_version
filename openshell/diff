@@ -1,0 +1,935 @@
+49a50,56
+>       integer g_zfock_mo_gs(2)
+>       double complex zocc
+>       integer iocc
+>       logical lrestart
+>       logical lrenorm
+>       double precision renorm_tend
+>       
+59d65
+<       integer i, j !Bruner
+68,69d73
+<       double precision dval1 
+<       integer nprint_dens !Bruner
+75a80
+>       double precision g_vect
+81c86,89
+< 
+---
+>       
+> C     imag time
+>       logical :: lconverged  = .false.
+>       
+89a98
+>       character*32 init_type
+99c108
+< 
+---
+> C      call rt_tddft_print_notice ("Entered open shell submodule")
+145a155,157
+>       ok=ok.and.ga_create(mt_dcpl,m,m,"MO GS a", 0,0, g_zfock_mo_gs(1))
+>       ok=ok.and.ga_create(mt_dcpl,m,m,"MO GS b", 0,0, g_zfock_mo_gs(2))
+> 
+201,202c213,214
+<       call rt_tddft_os_movecs_zdens (params, g_zdens_ao) !old way XXX should unify with closedshell way #ABOFF
+< C      call rt_tddft_movecs_zdens (params, 2, g_zdens_ao) !doesnt work?  I forget--check #ABON
+---
+> C      call rt_tddft_os_movecs_zdens (params, g_zdens_ao) !old way   !2014/11/29 this was turned on
+> C      call rt_tddft_movecs_zdens (params, 2, g_zdens_ao)
+204a217,229
+>       if (.not. rtdb_cget (params%rtdb, "rt_tddft:init_type",
+>      $     1, init_type)) init_type = "vectors"  !try vectors if user didnt specify
+> 
+>       if (trim(init_type) .eq. "vectors") then
+> C         call rt_tddft_movecs_zdens (params, 1, g_zdens_ao) !not working?
+>          call rt_tddft_os_movecs_zdens (params, g_zdens_ao)
+>       elseif (trim(init_type) .eq. "densmat") then
+>          call rt_tddft_zdens_read (params, g_zdens_ao(1), "alpha")
+>          call rt_tddft_zdens_read (params, g_zdens_ao(2), "beta")
+>       else
+>          call errquit(pname//"invalid init_type",0,0)
+>       endif
+>      
+209c234
+< C
+---
+> C     
+211,229c236,255
+< C
+<       call util_file_name ("dens_uks_alpha",
+<      $     .false., .false., outstr) !warning 60 char long
+<       if (.not. dmat_io_read(g_densre_ao(1),outstr))
+<      $     call errquit (pname//"read alpha dens failed",0,0)
+<       call ga_zero (g_densim_ao(1))
+< 
+<       call util_file_name ("dens_uks_beta",
+<      $     .false., .false., outstr) !warning 60 char long
+<       if (.not. dmat_io_read(g_densre_ao(2),outstr))
+<      $     call errquit (pname//"read alpha dens failed",0,0)
+<       call ga_zero (g_densim_ao(2))
+< 
+<       call convert_d2z(1d0, g_densre_ao(1),
+<      $     0d0, g_densim_ao(1), g_zdens_ao(1))
+<       call convert_d2z(1d0, g_densre_ao(2),
+<      $     0d0, g_densim_ao(2), g_zdens_ao(2))
+< 
+<       call rt_tddft_print_notice ("Loaded SCF density matrices")
+---
+> C     
+> c$$$      call util_file_name ("dens_uks_alpha",
+> c$$$     $     .false., .false., outstr) !warning 60 char long
+> c$$$      if (.not. dmat_io_read(g_densre_ao(1),outstr))
+> c$$$     $     call errquit (pname//"read alpha dens failed",0,0)
+> c$$$      call ga_zero (g_densim_ao(1))
+> c$$$
+> c$$$      call util_file_name ("dens_uks_beta",
+> c$$$     $     .false., .false., outstr) !warning 60 char long
+> c$$$      if (.not. dmat_io_read(g_densre_ao(2),outstr))
+> c$$$     $     call errquit (pname//"read alpha dens failed",0,0)
+> c$$$      call ga_zero (g_densim_ao(2))
+> c$$$
+> c$$$      call convert_d2z(1d0, g_densre_ao(1),
+> c$$$     $     0d0, g_densim_ao(1), g_zdens_ao(1))
+> c$$$      call convert_d2z(1d0, g_densre_ao(2),
+> c$$$     $     0d0, g_densim_ao(2), g_zdens_ao(2))
+> c$$$
+> c$$$      call rt_tddft_print_notice ("Loaded SCF density matrices")
+> c$$$
+230a257
+> C	XXX BRUNER /\
+232d258
+< C     XXX BRUNER /\
+238a265,275
+> 
+> 
+> C
+> C     Initialize complex absorbing boundary potential
+> C
+> c$$$      if (.not. ga_create(mt_dcpl, n, n, "zABC", 0,0, params%g_zabc))
+> c$$$     $     call errquit (pname//"zabc create failed", 0, GA_ERR)
+>      
+> !      call rt_tddft_spatial_potential (params%rtdb, n, params%g_zabc)  !calc and store abc in params struct
+> C      call rt_tddft_complex_abc (params%rtdb, n, params%g_zabc)  !calc and store abc in params struct
+>       
+249,250c286,289
+<       
+<       call zfock_os_build (params, g_zdens_ao, energies, g_zfock_ao) 
+---
+> 
+>       call zfock_os_build (params, g_zdens_ao, energies,
+>      $     g_zfock_ao, .true.)  !true = asymmetrize
+> 
+254,260c293,307
+<       if (.not. mat_is_purereal (g_zfock_mo(1), params%tol_zero))
+<      $     call errquit (pname//
+<      $     "initial Fock alpha matrix in MO basis is not pure real",0,0)
+< 
+<       if (.not. mat_is_purereal (g_zfock_mo(2), params%tol_zero))
+<      $     call errquit (pname//
+<      $     "initial Fock beta matrix in MO basis is not pure real",0,0)
+---
+> C     Store complex ground state fock matrix (useful when non-hermitian)
+>       call ga_copy (g_zfock_mo(1), g_zfock_mo_gs(1))
+>       call ga_copy (g_zfock_mo(2), g_zfock_mo_gs(2))
+>       
+> 
+> 
+> c$$$      if (.not. mat_is_purereal (g_zfock_mo(1), params%tol_zero))
+> c$$$     $     call errquit (pname//
+> c$$$     $     "initial Fock alpha matrix in MO basis is not pure real",0,0)
+> c$$$
+> c$$$      if (.not. mat_is_purereal (g_zfock_mo(2), params%tol_zero))
+> c$$$     $     call errquit (pname//
+> c$$$     $     "initial Fock beta matrix in MO basis is not pure real",0,0)
+> 
+>       call rt_tddft_print_notice ("Disabled init MO Fock check")  !because of ABC
+276,291c323,340
+<       if (params%matrix_checks) then
+<          call zmat_compare_and_print (params%ns_ao, g_zfock_ao(1),
+<      $        "fock_alpha_gs", params%tol_zero,
+<      $        "GS and RT-TDDFT alpha Fock matrices")
+<          
+<          call zmat_compare_and_print (params%ns_ao, g_zfock_ao(2),
+<      $        "fock_beta_gs", params%tol_zero,
+<      $        "GS and RT-TDDFT beta Fock matrices")
+<          
+<          call zmat_compare_and_print (params%ns_ao, g_zdens_ao(1),
+<      $        "dens_alpha_gs", params%tol_zero,
+<      $        "GS and RT-TDDFT alpha density matrices")
+<          
+<          call zmat_compare_and_print (params%ns_ao, g_zdens_ao(2),
+<      $        "dens_beta_gs", params%tol_zero,
+<      $        "GS and RT-TDDFT beta density matrices")
+---
+> c$$$      call zmat_compare_and_print (params%ns_ao, g_zfock_ao(1),
+> c$$$     $     "fock_alpha_gs", params%tol_zero,
+> c$$$     $     "GS and RT-TDDFT alpha Fock matrices")
+> c$$$
+> c$$$      call zmat_compare_and_print (params%ns_ao, g_zfock_ao(2),
+> c$$$     $     "fock_beta_gs", params%tol_zero,
+> c$$$     $     "GS and RT-TDDFT beta Fock matrices")
+> c$$$
+> c$$$      call zmat_compare_and_print (params%ns_ao, g_zdens_ao(1),
+> c$$$     $     "dens_alpha_gs", params%tol_zero,
+> c$$$     $     "GS and RT-TDDFT alpha density matrices")
+> c$$$
+> c$$$      call zmat_compare_and_print (params%ns_ao, g_zdens_ao(2),
+> c$$$     $     "dens_beta_gs", params%tol_zero,
+> c$$$     $     "GS and RT-TDDFT beta density matrices")
+> 
+>       if (me.eq.0) then
+>          write (luout, *) "XXX DID NOT CHECK INITIAL MATS"
+294a344,345
+> 
+> 
+299a351,355
+>       
+>       
+> 
+> 
+> C     OLD MOOCC WAY
+301,307c357,365
+<          if (.not. mat_is_purereal (g_zfock_mo(1), params%tol_zero))
+<      $        call errquit (pname//
+<      $        "initial Fock matrix in MO basis is not pure real", 0, 0)
+< 
+<          if (.not. mat_is_purereal (g_zfock_mo(2), params%tol_zero))
+<      $        call errquit (pname//
+<      $        "initial Fock matrix in MO basis is not pure real", 0, 0)
+---
+> c$$$         if (.not. mat_is_purereal (g_zfock_mo(1), params%tol_zero))
+> c$$$     $        call errquit (pname//
+> c$$$     $        "initial Fock matrix in MO basis is not pure real", 0, 0)
+> c$$$
+> c$$$         if (.not. mat_is_purereal (g_zfock_mo(2), params%tol_zero))
+> c$$$     $        call errquit (pname//
+> c$$$     $        "initial Fock matrix in MO basis is not pure real", 0, 0)
+> 
+> C     non-hermitian, so mat might not be pure real ^^
+313a372,476
+> C     END OLD WAY
+> 
+> 
+> 
+> c$$$      if (params%print_moocc_redone) then
+> c$$$         call rt_tddft_movecs_gs (params, g_zfock_mo(1),
+> c$$$     $        g_movecs_mo_gs(1))
+> c$$$         call rt_tddft_movecs_gs (params, g_zfock_mo(2),
+> c$$$     $        g_movecs_mo_gs(2))
+> c$$$      endif
+> c$$$
+>       
+> 
+> C
+> C     Magnus needs F'(t-1/2*dt) which we just set as
+> C     F' for now (will be updated in Magnus call).
+> C     
+> C      call ga_copy (g_zfock_mo(1), g_zfock_mo_n12dt(1))
+> C      call ga_copy (g_zfock_mo(2), g_zfock_mo_n12dt(2))
+> 
+> 
+> C
+> C     Compute eigenvectors of ground state Fock mat in MO basis (used
+> C     for MO occupations).
+> C
+> C      call rt_tddft_os_moocc_init (params, g_zfock_mo)
+> C
+> CXXX  [KAL]: moccc hardcoded for closedshell in params struct
+> 
+> 
+> 
+> C
+> C     XXX MANUAL ORBITAL OCCUPATIONS
+> C
+> c$$$      call ga_zero (g_zdens_mo(1))
+> c$$$      call ga_zero (g_zdens_mo(2))
+> c$$$      call ga_zero (g_zscr_mo(1))
+> c$$$      call ga_zero (g_zscr_mo(2))
+> 
+> 
+> C     (XXX He: 1s0 2s1 2p1)
+> c$$$      zjunk = dcmplx (1d0, 0d0)
+> c$$$      call ga_put (g_zscr_mo(1), 2, 2, 2, 2, zjunk, 1)  ! alpha: 2s
+> c$$$      call ga_put (g_zscr_mo(2), 3, 3, 3, 3, zjunk, 1)  ! beta: 2p
+> 
+>       
+> c$$$C     (gs)      
+> c$$$      do ig = 1, params%ns_mo
+> c$$$         if (ig.le.5) then
+> c$$$            zjunk = dcmplx (1d0, 0d0)
+> c$$$            call ga_put (g_zscr_mo(1), ig, ig, ig, ig, zjunk, 1)
+> c$$$            call ga_put (g_zscr_mo(2), ig, ig, ig, ig, zjunk, 1)
+> c$$$         endif
+> c$$$      enddo
+> c$$$
+> c$$$
+> c$$$C     (promote HOMO alpha spin)
+> c$$$      ig = 5
+> c$$$      zjunk = dcmplx (0d0, 0d0)
+> c$$$      call ga_put (g_zscr_mo(1), ig, ig, ig, ig, zjunk, 1)
+> c$$$
+> c$$$      ig = 80
+> c$$$      zjunk = dcmplx (1d0, 0d0)
+> c$$$      call ga_put (g_zscr_mo(1), ig, ig, ig, ig, zjunk, 1)
+> c$$$
+>       
+> c$$$      call ga_sync ()
+> c$$$      
+> c$$$      call rt_tddft_project_check (params, g_zscr_mo(1), g_zfock_mo(1))
+> c$$$      call rt_tddft_project_check (params, g_zscr_mo(2), g_zfock_mo(2))
+> c$$$      if (me.eq.0) write (luout,*) pname//"dens projection check passed"
+> c$$$
+> c$$$      call rt_tddft_project (params, "R",
+> c$$$     $     g_zscr_mo(1), g_zfock_mo(1), g_zdens_mo(1))
+> c$$$
+> c$$$      call rt_tddft_project (params, "R",
+> c$$$     $     g_zscr_mo(2), g_zfock_mo(2), g_zdens_mo(2))
+> c$$$
+> c$$$      call ga_zero (g_zscr_mo(1))
+> c$$$      call ga_zero (g_zscr_mo(2))
+> 
+> 
+> !XXXASB ----- For Neutral Molecule WRITE Ground State MO Vecs ----
+> c$$$      call util_file_name ("gsmovecs_alp",
+> c$$$     $     .false., .false., outstr) !warning 60 char long
+> c$$$      if (.not. dmat_io_dump(g_movecs_mo_gs(1),outstr)) 
+> c$$$     $     call errquit (pname//"write alpha dens failed",0,0)
+> c$$$      
+> c$$$      call util_file_name ("gsmovecs_beta",
+> c$$$     $     .false., .false., outstr) !warning 60 char long
+> c$$$      if (.not. dmat_io_dump(g_movecs_mo_gs(2),outstr)) 
+> c$$$     $     call errquit (pname//"write beta dens failed",0,0)
+> c$$$                              
+> !XXXASB ----------------------------------------------------------
+> !XXX  ASB ----- For Neutral Molecule READ Ground State MO Vecs -----
+> c$$$      call util_file_name ("gsmovecs_alp",
+> c$$$     $     .false., .false., outstr) !warning 60 char long
+> c$$$      if (.not. dmat_io_read(g_movecs_mo_gs(1),outstr)) 
+> c$$$     $     call errquit (pname//"read alpha GS movecs failed",0,0)
+> c$$$      
+> c$$$      call util_file_name ("gsmovecs_beta",
+> c$$$     $     .false., .false., outstr) !warning 60 char long
+> c$$$      if (.not. dmat_io_read(g_movecs_mo_gs(2),outstr)) 
+> c$$$     $     call errquit (pname//"read beta GS movecs failed",0,0)
+> !XXXASB ----------------------------------------------------------
+316,337d478
+<       !XXXASB ----- For Neutral Molecule WRITE Ground State MO Vecs ----
+<       call util_file_name ("gsmovecs_alp",
+<      $     .false., .false., outstr) !warning 60 char long
+<       if (.not. dmat_io_dump(g_movecs_mo_gs(1),outstr)) 
+<      $     call errquit (pname//"write alpha dens failed",0,0)
+<  
+<       call util_file_name ("gsmovecs_beta",
+<      $     .false., .false., outstr) !warning 60 char long
+<       if (.not. dmat_io_dump(g_movecs_mo_gs(2),outstr)) 
+<      $     call errquit (pname//"write beta dens failed",0,0)
+<       !XXXASB ----------------------------------------------------------
+<       !XXXASB ----- For Neutral Molecule READ Ground State MO Vecs -----
+< C$$$       call util_file_name ("gsmovecs_alp",
+< C$$$     $      .false., .false., outstr) !warning 60 char long
+< C$$$       if (.not. dmat_io_read(g_movecs_mo_gs(1),outstr)) 
+< C$$$     $      call errquit (pname//"read alpha GS movecs failed",0,0)
+< C$$$  
+< C$$$       call util_file_name ("gsmovecs_beta",
+< C$$$     $      .false., .false., outstr) !warning 60 char long
+< C$$$       if (.not. dmat_io_read(g_movecs_mo_gs(2),outstr)) 
+< C$$$     $      call errquit (pname//"read beta GS movecs failed",0,0)
+<       !XXXASB ----------------------------------------------------------
+338a480
+>       
+351,360c493,500
+<       if (.not.rtdb_get (params%rtdb, "rt_tddft:rest_it",
+<      $     mt_int, 1, rest_it)) then  !clean start
+<          it = 1
+<          tt = params%tmin
+<          call rt_tddft_print_msg(params, tt, "Propagation started")
+<          
+<       else !restart
+<          call rt_tddft_print_notice ("Restart information detected")
+<          call rt_tddft_os_restart_load (params, it, tt, g_zdens_ao)
+<          
+---
+> 
+> C     New restart way:
+>       if (.not.rtdb_get (params%rtdb, "rt_tddft:restart",
+>      $     mt_log, 1, lrestart))
+>      $     lrestart = .false.
+>       
+>       if (lrestart) then
+>          call rt_tddft_restart_load (params, it, tt, 2, g_zdens_ao) ! 2 for uks
+365d504
+< 
+367a507,510
+>       else
+>          it = 1
+>          tt = params%tmin
+>          call rt_tddft_print_msg(params, tt, "Propagation started")
+368a512,541
+>       
+> 
+> c$$$C START: Commented out by Adonay
+> c$$$
+> c$$$      if (.not.rtdb_get (params%rtdb, "rt_tddft:rest_it",
+> c$$$     $     mt_int, 1, rest_it)) then  !clean start
+> c$$$
+> c$$$
+> c$$$CCC wasn't commented out before 
+> c$$$         it = 1
+> c$$$         tt = params%tmin
+> c$$$         call rt_tddft_print_msg(params, tt, "Propagation started")
+> c$$$CCC end
+> c$$$
+> c$$$         
+> c$$$      else !restart
+> c$$$         call rt_tddft_print_notice ("Restart information detected")
+> c$$$         call rt_tddft_os_restart_load (params, it, tt, g_zdens_ao)
+> c$$$         
+> c$$$         call canorg_trans (params, "P", "AO->MO",
+> c$$$     $        g_zdens_ao(1), g_zdens_mo(1))
+> c$$$         call canorg_trans (params, "P", "AO->MO",
+> c$$$     $        g_zdens_ao(2), g_zdens_mo(2))
+> c$$$
+> c$$$         call rt_tddft_print_msg (params, tt,
+> c$$$     $        "Propagation successfully restarted")
+> c$$$      endif
+> c$$$
+> c$$$
+> C END: Commented out by Adonay
+388a562,563
+> 
+> 
+395c570
+<          
+---
+> 
+407a583,596
+> C     Re-compute overlap matrix and canonical orthogonalization
+> C     transforms.  This only needs to be done once if the nuclei are
+> C     frozen, otherwise every time they move you need to re-compute it.
+> C     Note, we have already done it during the main init.
+> C
+> CXXX  [KAL]: not implemented yet
+> c$$$         if (need_canorg) then
+> c$$$            call rt_tddft_init_overlap (params)
+> c$$$            call rt_tddft_print_canorg (params, tt)
+> c$$$            need_canorg = .false.
+> c$$$         endif
+> 
+> 
+> C
+423,482d611
+< C      call ga_print(g_zdens_ao(1)) !XXX
+< C      call ga_print(g_zdens_ao(2)) !XXX
+< 
+< C       == ADAM Added \/ ==
+<          if (.not.rtdb_get (params%rtdb, "rt_tddft:nprint_dens",
+<      $        mt_int, 1, nprint_dens)) nprint_dens = 1
+< 
+<          if (rt_tddft_atpoint(it, params%nt, nprint_dens)) then
+<             if (me.eq.0) then
+<                write (luout, fmt="(a,2x,1es22.12e3)", advance="no")
+<      $              params%tag, tt
+<                do i = 1,n
+<                   do j = 1,n
+<                      call ga_get(g_densre_ao(1), i, i, j, j, dval1, 1)
+<                      write (luout,fmt="(1es22.12e3)",advance="no") dval1
+<                   enddo
+<                enddo
+<                write (luout, *) " # Density matrix (real) Alp"
+<                call util_flush(luout)
+< 
+<                write (luout, fmt="(a,2x,1es22.12e3)", advance="no")
+<      $              params%tag, tt
+<                do i = 1,n
+<                   do j = 1,n
+<                      call ga_get(g_densim_ao(1), i, i, j, j, dval1, 1)
+<                      write (luout,fmt="(1es22.12e3)",advance="no") dval1
+<                   enddo
+<                enddo
+<                write (luout, *) " # Density matrix (imag) Alp"
+<                call util_flush(luout)
+<                
+<                write (luout, fmt="(a,2x,1es22.12e3)", advance="no")
+<      $              params%tag, tt
+<                do i = 1,n
+<                   do j = 1,n
+<                      call ga_get(g_densre_ao(2), i, i, j, j, dval1, 1)
+<                      write (luout,fmt="(1es22.12e3)",advance="no") dval1
+<                   enddo
+<                enddo
+<                write (luout, *) " # Density matrix (real) Beta"
+<                call util_flush(luout)
+< 
+<                write (luout, fmt="(a,2x,1es22.12e3)", advance="no")
+<      $              params%tag, tt
+<                do i = 1,n
+<                   do j = 1,n
+<                      call ga_get(g_densim_ao(2), i, i, j, j, dval1, 1)
+<                      write (luout,fmt="(1es22.12e3)",advance="no") dval1
+<                   enddo
+<                enddo
+<                write (luout, *) " # Density matrix (imag) Beta"
+<                call util_flush(luout)
+<             endif
+<             call ga_sync ()
+<          endif
+< 
+< C       == ADAM /\ ==
+< 
+< 
+< 
+514a644,645
+> C Un-commented by adonay
+> c$$$
+517c648,651
+< 
+---
+> c$$$            
+> c$$$            call rt_tddft_print_msg (params, it, tt, "Checks passed")
+> c$$$
+> c$$$C End: Un-commented by adonay
+526c660
+< 
+---
+>          
+532c666
+< C         if (rt_tddft_atpoint(it, params%nt, params%nsnapshots)) then
+---
+> C     if (rt_tddft_atpoint(it, params%nt, params%nsnapshots)) then
+540d673
+< C            call rt_tddft_snapshot_save(params, it, tt, g_densre_ao(1))   ! dump alpha spin dens mat only
+550,557c683,692
+<          if (rt_tddft_atpoint(it, params%nt, params%nprints)) then
+<             if (params%prof) call prof_start (elapsed_props)
+< 
+<             call ga_zero (g_densre_ao_tot)
+<             call ga_add (1d0, g_densre_ao(1), 1d0, g_densre_ao(2),
+<      $           g_densre_ao_tot)  !done before?
+< 
+< 
+---
+> C         if (rt_tddft_atpoint(it, params%nt, params%nprints)) then
+>          
+> C     print at all times (cheap)
+>          
+>          if (params%prof) call prof_start (elapsed_props)
+>          call ga_zero (g_densre_ao_tot)
+>          call ga_add (1d0, g_densre_ao(1), 1d0, g_densre_ao(2),
+>      $        g_densre_ao_tot)  !done before?
+>          
+>          
+559,564c694,699
+<             if (params%print_cputime) then
+<                cpusec = util_cpusec ()
+<                call rt_tddft_print_val (params, tt, cpusec, "CPU time")
+<             endif
+< 
+< 
+---
+>          if (params%print_cputime) then
+>             cpusec = util_cpusec ()
+>             call rt_tddft_print_val (params, tt, cpusec, "CPU time")
+>          endif
+>          
+>          
+566,571c701,706
+<             if (params%print_energy) then
+<                call rt_tddft_calc_Etot (params, energies)
+<                call rt_tddft_print_energies(params, tt, energies)
+<             endif
+< 
+< 
+---
+>          if (params%print_energy) then
+>             call rt_tddft_calc_Etot (params, energies)
+>             call rt_tddft_print_energies(params, tt, energies)
+>          endif
+>          
+>          
+573,582c708,717
+<             if (params%print_charge) then 
+<                call rt_tddft_print_charge (params, tt,
+<      $              g_densre_ao(1), "(alpha spin)")  
+<                call rt_tddft_print_charge (params, tt,
+<      $              g_densre_ao(2), "(beta spin)")  
+<                call rt_tddft_print_charge (params, tt,
+<      $              g_densre_ao_tot, "(total spin)")
+<             endif
+< 
+< 
+---
+>          if (params%print_charge) then 
+>             call rt_tddft_print_charge (params, tt,
+>      $           g_densre_ao(1), "(alpha spin)")
+>             call rt_tddft_print_charge (params, tt,
+>      $           g_densre_ao(2), "(beta spin)")
+>             call rt_tddft_print_charge (params, tt,
+>      $           g_densre_ao_tot, "(total spin)")
+>          endif
+>          
+>          
+585c720,822
+<             if (params%print_moocc) then
+---
+> 
+> C turned off for the time being
+> C     NEW MOOCC NON-HERMITIAN WAY  
+> c$$$      if (params%print_moocc) then
+> c$$$         call rt_tddft_project_check (params,
+> c$$$     $        g_zdens_mo(1), g_zfock_mo_gs(1), .false.)
+> c$$$         call rt_tddft_project_check (params,
+> c$$$     $        g_zdens_mo(2), g_zfock_mo_gs(2), .false.)
+> c$$$
+> c$$$         if (me.eq.0)
+> c$$$     $        write (luout,*) pname//"dens projection check passed"
+> c$$$
+> c$$$         call ga_zero (g_zscr_mo(1))
+> c$$$         call ga_zero (g_zscr_mo(2))
+> c$$$         
+> c$$$         call rt_tddft_project (params, "F",
+> c$$$     $        g_zdens_mo(1), g_zfock_mo_gs(1), g_zscr_mo(1), .false.)
+> c$$$
+> c$$$         call rt_tddft_project (params, "F",
+> c$$$     $        g_zdens_mo(2), g_zfock_mo_gs(2), g_zscr_mo(2), .false.)
+> c$$$
+> c$$$C     print occupations
+> c$$$         if (me.eq.0) then
+> c$$$
+> c$$$C     alpha real
+> c$$$            write (luout, "(a,2x,1f11.5)", advance="no")
+> c$$$     $           trim(params%tag), tt
+> c$$$            
+> c$$$            do iocc = 1, m
+> c$$$               call ga_get(g_zscr_mo(1), iocc,iocc,iocc,iocc, zocc, 1)
+> c$$$               write (luout, "(1es22.12e3)", advance="no") dble(zocc)
+> c$$$            enddo
+> c$$$            write(luout, *) "     # MO Occupations (alpha) (real)"
+> c$$$
+> c$$$C     alpha imag
+> c$$$            write (luout, "(a,2x,1f11.5)", advance="no")
+> c$$$     $           trim(params%tag), tt
+> c$$$            do iocc = 1, m
+> c$$$               call ga_get(g_zscr_mo(1), iocc,iocc,iocc,iocc, zocc, 1)
+> c$$$               write (luout, "(1es22.12e3)", advance="no") aimag(zocc)
+> c$$$            enddo
+> c$$$            write(luout, *) "     # MO Occupations (alpha) (imag)"
+> c$$$
+> c$$$C     beta real
+> c$$$            write (luout, "(a,2x,1f11.5)", advance="no")
+> c$$$     $           trim(params%tag), tt
+> c$$$            do iocc = 1, m
+> c$$$               call ga_get(g_zscr_mo(2), iocc,iocc,iocc,iocc, zocc, 1)
+> c$$$               write (luout, "(1es22.12e3)", advance="no") dble(zocc)
+> c$$$            enddo
+> c$$$            write(luout, *) "     # MO Occupations (beta) (real)"
+> c$$$
+> c$$$C     beta imag
+> c$$$            write (luout, "(a,2x,1f11.5)", advance="no")
+> c$$$     $           trim(params%tag), tt
+> c$$$            do iocc = 1, m
+> c$$$               call ga_get(g_zscr_mo(2), iocc,iocc,iocc,iocc, zocc, 1)
+> c$$$               write (luout, "(1es22.12e3)", advance="no") aimag(zocc)
+> c$$$            enddo
+> c$$$            write(luout, *) "     # MO Occupations (beta) (imag)"
+> c$$$
+> c$$$            
+> c$$$         endif
+> c$$$
+> c$$$
+> c$$$c$$$         call ga_print (g_zscr_mo(1))
+> c$$$c$$$         call ga_print (g_zscr_mo(2))
+> c$$$         
+> c$$$         call ga_zero (g_zscr_mo(1))
+> c$$$         call ga_zero (g_zscr_mo(2))
+> c$$$      endif
+>          
+> C     (<S^2> of entire active geom, calc in MO basis)
+>          if (params%print_s2) then
+>             call rt_tddft_calc_s2 (params, g_densre_mo, s2val)
+>             call rt_tddft_print_val (params, tt, s2val, "<S^2>")
+>          endif
+>          
+>          
+> C     (dipole moment, calc in AO basis)
+>          if (params%print_dipole) then
+>             do ig = 1, params%ngeoms
+>                
+>                if (params%geom(ig)%measure) then
+>                   
+>                   outstr = "Dipole moment [" //
+>      $                 trim (params%geom(ig)%name) //
+>      $                 "] (total spin)"
+>                   call rt_tddft_calc_dip_geom (params,
+>      $                 g_densre_ao_tot, ig, dipmom_alpha)
+>                   call rt_tddft_print_vector (params, tt,
+>      $                 dipmom_alpha, outstr)
+>                endif            !end "measure" this geom
+>             enddo               !loop over geoms
+>          endif
+>             
+> C     (external applied field, also calcd in tdfock, note assume applied
+> C     equally to both spins)
+>          
+>          if (params%print_field)
+>      $        call rt_tddft_print_fields (params, tt)
+>          
+>          if (params%prof) call prof_end (elapsed_props, "Properties")
+587a825,829
+> C turned on for the time being
+> C     OLD MOOCC WAY
+>          if (params%prof) call prof_start (elapsed_props)
+>          if (rt_tddft_atpoint(it, params%nt, params%nprints)) then
+>             if (params%print_moocc) then
+593c835
+< 
+---
+>                
+599,615d840
+< 
+< C              if (rt_tddft_atpoint(it, params%nt, 2500)) then
+< CXXX               call rt_tddft_calc_dip_oscontribs (params, 
+< CXXX     $              g_movecs_mo_gs(1), g_zdens_ao(1), tt)!, "ALPHA")
+< C                   !Bruner Added 1-alpha and 2-beta
+< CXXX               call rt_tddft_calc_dip_oscontribs (params, 
+< CXXX     $              g_movecs_mo_gs(2), g_zdens_ao(2), tt)!, "BETA") 
+< C                   !Bruner Added 1-alpha and 2-beta
+<                call rt_tddft_calc_dip_contribs (params, 
+<      $              g_movecs_mo_gs(1), g_zdens_ao(1), tt, "ALPHA") 
+<                call rt_tddft_calc_dip_contribs (params, 
+<      $              g_movecs_mo_gs(2), g_zdens_ao(2), tt, "BETA") 
+< C                   !Bruner Added 1-alpha and 2-beta
+< CC               call ga_print(g_movecs_mo_gs(1))
+< CC               call ga_print(g_zdens_ao(1))
+< CC               call ga_print(tt)
+< C               endif
+616a842,863
+>          endif
+>          if (params%prof) call prof_start (elapsed_props, "MO Occs")
+>          
+>          
+> C     OLD MOOCC WAY redone for tddft and using new eigenvectors
+> c$$$         if (params%prof) call prof_start (elapsed_props)
+> c$$$         if (rt_tddft_atpoint(it, params%nt, params%nprints)) then
+> c$$$            if (params%print_moocc_redone) then
+> c$$$               call rt_tddft_moocc_calc_redone (params, g_densre_mo(1),
+> c$$$     $              g_movecs_mo_gs(1), dbl_mb(imoocc(1)))
+> c$$$               call rt_tddft_moocc_redone_print (params,
+> c$$$     $              tt, dbl_mb(imoocc(1)),
+> c$$$     $              "# MO Occupations (alpha spin)")
+> c$$$               
+> c$$$               call rt_tddft_moocc_calc_redone (params, g_densre_mo(2),
+> c$$$     $              g_movecs_mo_gs(1), dbl_mb(imoocc(2)))
+> c$$$               call rt_tddft_moocc_redone_print (params,
+> c$$$     $              tt, dbl_mb(imoocc(2)),
+> c$$$     $              "# MO Occupations (beta spin)")
+> c$$$            endif
+> c$$$         endif
+> c$$$         if (params%prof) call prof_start (elapsed_props, "MO Occs new")
+619,623d865
+< C     (<S^2> of entire active geom, calc in MO basis)
+<             if (params%print_s2) then
+<                call rt_tddft_calc_s2 (params, g_densre_mo, s2val)
+<                call rt_tddft_print_val (params, tt, s2val, "<S^2>")
+<             endif
+625,634d866
+<             
+< C     (dipole moment, calc in AO basis)
+< C
+< C     note: I dont think dipmom_alpha + dipmom_beta = dip_total (note I
+< C     use the total density matrix to compute dipmom_tot)
+< C     
+<             if (params%print_dipole) then
+<                do ig = 1, params%ngeoms
+<                   
+<                   if (params%geom(ig)%measure) then
+636,667d867
+<                      outstr = "Dipole moment [" //
+<      $                    trim (params%geom(ig)%name) //
+<      $                    "] (alpha spin)"
+<                      call rt_tddft_calc_dip_geom (params,
+<      $                    g_densre_ao(1), ig, dipmom_alpha)
+<                      call rt_tddft_print_vector (params, tt,
+<      $                    dipmom_alpha, outstr)
+< 
+<                      outstr = "Dipole moment [" //
+<      $                    trim (params%geom(ig)%name) //
+<      $                    "] (beta spin)"
+<                      call rt_tddft_calc_dip_geom (params,
+<      $                    g_densre_ao(2), ig, dipmom_beta)
+<                      call rt_tddft_print_vector (params, tt,
+<      $                    dipmom_beta, outstr)
+< 
+<                      outstr = "Dipole moment [" //
+<      $                    trim (params%geom(ig)%name) //
+<      $                    "] (total spin)"
+<                      call rt_tddft_calc_dip_geom (params,
+<      $                    g_densre_ao_tot, ig, dipmom_tot)
+<                      call rt_tddft_print_vector (params, tt,
+<      $                    dipmom_tot, outstr)
+<                      
+<                   endif         !end "measure" this geom
+<                enddo            !loop over geoms
+<             endif
+<             
+< C     (external applied field, also calcd in tdfock, note assume applied
+< C     equally to both spins)
+<             if (params%print_field)
+<      $           call rt_tddft_print_fields (params, tt)
+669,670c869,870
+<             if (params%prof) call prof_end (elapsed_props, "Properties")
+<          endif  !end print point
+---
+> C     END OLD WAY
+> 
+677c877,878
+<             call rt_tddft_os_restart_save (params, it, tt, g_zdens_ao)
+---
+> c$$$            call rt_tddft_os_restart_save (params, it, tt, g_zdens_ao)
+>             call rt_tddft_restart_save (params, it, tt, 2, g_zdens_ao)
+681,682c882,883
+< 
+< 
+---
+>          
+>          
+685c886,888
+< C     
+---
+> ccc   start: Added by Adonay
+>             
+> 
+689c892,893
+< 
+---
+>             
+> cccc  end: Added by Adonay     
+691c895,896
+<             call errquit (pname//"rk4 disabled", 0, 0)
+---
+>             call prop_rk4_os (params, tt, rt_tddft_os_tdfock,
+>      $           2,  g_zdens_mo, energies)
+693c898,902
+<          elseif (params%prop_method .eq. 3) then
+---
+> 
+> c$$$         elseif (params%prop_method .eq. 2) then
+> c$$$            call errquit (pname//"rk4 disabled", 0, 0)
+>             
+>          elseif (params%prop_method .eq. 3) then  
+696a906,915
+>             
+>          elseif (params%prop_method .eq. 4) then
+>             call prop_imag_time_rk4_os (params, tt, rt_tddft_os_tdfock,
+>      $           2,  g_zdens_mo, energies, lconverged)
+> 
+>             if (lconverged) then
+>                call rt_tddft_print_msg (params, tt,
+>      $              "Imaginary time propagation converged, stopping")
+>                exit
+>          endif
+697a917
+>             
+700a921,939
+>          
+> C
+> C     Added KAL 2017/06/13:  Optionally renormalize density matrix
+> C 
+>          if (.not.rtdb_get(params%rtdb, "rt_tddft:renormalize_on",
+>      $        mt_log, 1, lrenorm)) lrenorm = .false.
+>          
+>          if (lrenorm) then
+>             if (.not.rtdb_get(params%rtdb,
+>      $           "rt_tddft:renormalize_tend",
+>      $           mt_dbl, 1, renorm_tend))
+>      $           call errquit(pname//"need renormalize_tend",0,0)
+>             
+>             if (tt .le. renorm_tend) then
+>                call rt_tddft_renormalize (params, g_zdens_mo(1),"alpha")
+>                call rt_tddft_renormalize (params, g_zdens_mo(2),"beta")
+>             endif
+>          endif
+> 
+712c951
+< 
+---
+>          
+714a954,956
+>       call ga_sync() !for the imag time exit
+> 
+>       
+741a984
+>          ok = ok .and. ga_destroy(g_zfock_mo_gs(is))
+757c1000,1070
+< c $Id: rt_tddft_os_prop.F 24344 2013-06-22 06:15:21Z d3y133 $
+---
+> 
+> 
+> 
+>       
+> 
+> 
+> C====================================================================
+> 
+> C
+> C     GRAVEYARD
+> C
+> 
+> 
+> C
+> C     Pack ground state SCF density matrix into complex GA, and also
+> C     convert to MO basis (for first time step). OLD WAY
+> C     
+> c$$$      call convert_d2z (1d0, g_dens_scf(1), 0d0, g_dens_scf(1),
+> c$$$     $     g_zdens_ao(1))
+> c$$$      call canorg_trans(params,"P","AO->MO",g_zdens_ao(1),g_zdens_mo(1))
+> c$$$      
+> c$$$      call convert_d2z (1d0, g_dens_scf(2), 0d0, g_dens_scf(2),
+> c$$$     $     g_zdens_ao(2))
+> c$$$      call canorg_trans(params,"P","AO->MO",g_zdens_ao(2),g_zdens_mo(2))
+> 
+> 
+> 
+> C
+> C     Dump ground state density matrix to file (used for visualization)
+> C
+> c$$$      if (params%viz_active) then
+> c$$$         call ga_zero (g_densre_ao_tot)
+> c$$$         call ga_add (1d0, g_densre_ao(1), 1d0, g_densre_ao(2),
+> c$$$     $        g_densre_ao_tot)
+> c$$$         
+> c$$$         call rt_tddft_snapshot_save (params, 1, params%tmin,
+> c$$$     $        g_densre_ao)
+> c$$$      endif
+> 
+> 
+> 
+> 
+> 
+>                   
+>                      
+> C     XXX NOT VALID TO COMPUTE DIPOLE MOMENTS ON DIFFERENT SPINS SEPARATELY
+> c$$$                     outstr = "Dipole moment [" //
+> c$$$     $                    trim (params%geom(ig)%name) //
+> c$$$     $                    "] (alpha spin)"
+> c$$$                     call rt_tddft_calc_dip_geom (params,
+> c$$$     $                    g_densre_ao(1), ig, dipmom_alpha)
+> c$$$                     call rt_tddft_print_vector (params, tt,
+> c$$$     $                    dipmom_alpha, outstr)
+> c$$$
+> c$$$                     outstr = "Dipole moment [" //
+> c$$$     $                    trim (params%geom(ig)%name) //
+> c$$$     $                    "] (beta spin)"
+> c$$$                     call rt_tddft_calc_dip_geom (params,
+> c$$$     $                    g_densre_ao(2), ig, dipmom_beta)
+> c$$$                     call rt_tddft_print_vector (params, tt,
+> c$$$     $                    dipmom_beta, outstr)
+> c$$$
+> c$$$                     outstr = "Dipole moment [" //
+> c$$$     $                    trim (params%geom(ig)%name) //
+> c$$$     $                    "] (total spin)"
+> c$$$                     dipmom_tot%x = dipmom_alpha%x + dipmom_beta%x
+> c$$$                     dipmom_tot%y = dipmom_alpha%y + dipmom_beta%y
+> c$$$                     dipmom_tot%z = dipmom_alpha%z + dipmom_beta%z
+> c$$$                     
+> c$$$                     call rt_tddft_print_vector (params, tt,
+> c$$$     $                    dipmom_tot, outstr)

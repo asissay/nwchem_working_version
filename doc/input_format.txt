@@ -1,0 +1,136 @@
+*** All keywords are to be placed in the "rt_tddft" block:
+
+rt_tddft
+  ...
+end
+
+and the corresponding task is:
+
+task dft rt_tddft
+
+
+*** The simulation time parameters are non-optional, and must be
+specified (all of which are in atomic units of time)
+
+rt_tddft
+  ...
+  tmin 0.0
+  tmax 1000.0
+  dt 0.2
+  ...
+end
+
+
+*** The initial conditions take the form of (real-valued) movecs
+files, as generated from standard scf runds. They are specified via
+the "load" keyword, in which you either explicitly specify the movecs
+file, or the default is to just use the output from a previous SCF run
+(if no SCF was run, an error will occur).
+
+load vectors "myrun.movecs"
+
+or
+
+load scf
+
+
+*** The external applied fields are specified with "field" sub-blocks,
+with the name of the field following the opening of the block (just as
+with geometries, basis sets, etc).  There are three types of field:
+"cw" (continuous wave), "kick" (delta-function excitation in time),
+and "pulse" (gaussian enveloped monochromatic pulse).  For each field
+the following must be specified: a type (cw, kick, pulse), a maximum
+(max field value in au), and a polarization (x,y,z; xx,xy,xz,... for
+gradients/quadrupoles have been partially implemented but are not
+enabled).
+
+For a cw excitation, you must also specify the "frequency", and for a
+pulse excitation you have to specify "frequency", "center", and
+"width" (where center and width are for the Gaussian envelope and have
+units of time).
+
+For example,
+
+field "myfield1"
+  type cw
+  max 0.1
+  polarization x
+  frequency 0.2
+end
+
+field "myfield2"
+  type pulse
+  max 0.2
+  polarization y
+  frequency 0.3
+  center 20.0
+  width 0.5
+end
+
+field "myfield3"
+  type kick
+  max 0.0003
+  polarization x
+end
+
+In the future, you will be able to read in arbitrary field profiles
+from file (not implemented yet).
+
+Once fields have been specified, you set up rules for which geometry
+(fragments) to apply them to using the "excite" keyword (note the name
+of the geometry and the name of the field):
+
+...
+excite "fragment" with "myfield2"
+...
+
+
+*** The number of output points, checks, etc each have their own
+keyword.  You can use "*" to mean print at every time step.
+
+nprints *
+nchecks 10
+nsnapshots 0
+nrestarts 0
+
+
+*** The quantites you want are controlled by the "print" keyword:
+
+print <quantities>
+
+Allowed values are "dipole", "energy", "field", "moocc", "quadrupole",
+"cputime", "charge", "convergence", and "*".
+
+
+*** Tolerances are set with the "tolerances" keyword, e.g., 
+
+tolerances zero 1d-8 series 1d-9 interpol 1d-7
+
+(zero means checking if a quantity is zero, series is for the power or
+BCH series convergence, and interpol is for the Magnus interpolation convergence).
+
+XXX SPLIT INTO TOLERANCES AND CONVERGENCE KEYWORDS
+
+
+*** The propagator is chosen using "propagator"
+
+propagator <method> [options]
+
+where <method> can be either "rk4" or "magnus".  If using Magnus, you
+can specify the predictor method with "predictor <mthd>" and the
+exponentiation method with "exp <mthd>".  If you don't specify, the
+default is 2nd order Magnus with interpolation and power series
+exponentiation.
+
+Magnus predictor options are "pc2" (2nd order predictor corrector),
+"lin2" (2nd order linear extapolation), and "interpol2" (2nd order
+self-consistent interpolation).
+
+Magnus exponentiation options are "diag" (diagonalization), "pseries"
+(contractive power series), and "bch" (Baker-Campbell-Hausdorff).
+
+propagator rk4                           # 4th order Runge-Kutta
+propagator magnus                        # 2nd order Magnus w/ interpolation and power series
+propagator magnus predictor pc2 exp diag # 2nd order Magnus w/ predictor corrector and diag
+
+

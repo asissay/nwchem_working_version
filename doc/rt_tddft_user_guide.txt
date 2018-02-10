@@ -1,0 +1,355 @@
+NWChem Real-Time TDDFT User Guide
+=================================
+
+Overview
+--------
+XXX TODO
+
+
+Unit conversions
+----------------
+
+All input and output units are in atomic units (au) unless otherwise
+stated.  For convenience, the conversions from au are:
+
+1 au length          = 0.5292 A
+1 au energy          = 27.2114 eV
+1 au time            = 0.02419 fs
+1 au electric field  = 514.2 V/nm
+1 au dipole moment   = 2.542 D
+
+
+
+Basis set and DFT settings
+--------------------------
+XXX
+
+
+Geometries
+----------
+XXX
+
+
+Time settings
+--------------
+The following time parameters must be specified:
+
+dt
+tmin
+tmax
+
+For example,
+
+rt_tddft
+  ...
+  tmin 0.0
+  tmax 1000.0
+  dt 0.5
+  ...
+end
+
+Note that depending on the propagation method, large time steps may
+make the simulation unstable.  Even in the case of perfectly unitary
+propagators (e.g, Magnus with interpolation) the results become
+inaccurate with increasing dt.  Care must be taken in choosing a dt
+that is large enough to speed up the simulation, yet small enough to
+be accurate.  In practice, it is always a good idea to ensure the
+results do not change with dt.
+
+To estimate the required simulation time, it is useful to remember
+that the period of an oscillation is related to the angular frequency
+by:
+
+T = 2 pi / w
+
+For example, an oscillation with w = 0.08 au = 2.18 eV has a period of
+
+Also, recall you require smaller dt to resolve higher frequency
+signals.
+
+
+
+Propagator settings
+-------------------
+
+The propagator settings dictate how the density matrix (P) is evolved
+in time, i.e., the technique for stepping P(t) -> P(t+dt).  The
+simplest is 4th order Runge-Kutta.  This can be enabled via:
+
+rt_tddft
+  ...
+  rk4
+  ...
+end
+
+RK4 is non-symplectic and thus rapidly becomes unstable, especially
+for larger systems.  A better propagtor is the "Magnus" propagator,
+which is perfectly unitary regardless of the time step.  Currently,
+only the 2nd order Magnus is implemented, which is equivalent to an
+exponential midpoint approximation:
+
+P(t+dt) = U P(t) U^+
+
+where U = exp[-iF(t+dt/2)]
+
+There are two difficulties here.  First, you need to know the Fock
+matrix at a future time.  Currently there are three ways to do this:
+linear extrapolation, a predictor-corrector (PC) scheme, and
+self-consistent interpolation.  Linear extrapolation is very
+inaccurate and should not be used.  The PC scheme is fast and accurate
+for slowly varying systems but breaks down if your time step is larger
+than the variations in the Fock matrix.  The interpolation method is
+most accurate, but can be very slow as you have to re-compute the Fock
+matrix multiple times each time step.
+
+The second difficulty is exponentiation of -iF(t+dt/2).  The three
+possibilities here are diagonalization (very accurate but does not
+parallelize well), Baker-Campbell-Hausdorff (BCH) expansion, and a
+contractive power series.  Diagonalization is good only for small
+systems, the BCH is best if the Fock matrix does not have any large
+elements, and the contractive power series is generally accurate and
+stable.  Usually the power series is best.
+
+The Magnus propagator, along with the various options, are specified
+as:
+
+rt_tddft
+  ...
+  magnus [prop_method] [exp_method]
+  ...
+end
+
+where prop_method is "linear", "pc2", or "interpol2" and exp_method is
+"diag", "bch", or "pseries".  For example, 
+
+rt_tddft
+  ...
+  magnus interpol2 pseries
+  ...
+end
+
+would use 2nd order Magnus with self-consistent interpolation and
+power series exponentiation, which is what the code will default to if
+you do not explicitly specify propagator settings.
+
+
+
+Applied electric field
+----------------------
+
+Currently, the only form of applied electric field is linearly
+polarized Gaussian-enveloped sinusoid of the form:
+
+E(t) = k exp[-(t-t0)^2 / 2 w^2] * cos (w0*t) * \hat{d}
+
+where t0 is the center of the pulse, w is the width of the pulse, w0
+is the frequency of the pulse, \hat{d} is the polarization (x,y,z),
+and k is the maximum (i.e., the maximum value the pulse takes).  Note
+that this form is not normalized (e.g., the total energy you add to the
+system will change if you change dt).
+
+The variables to control the pulse are:
+
+pcen  - t0
+pwid  - w
+pmax  - k
+pdir  - \hat{d}
+pfreq - w0
+
+For example, to create a weak, narrow, delta-function like y-polarized "kick":
+
+rt_tddft
+  ...
+  pcen 3.0
+  pwid 0.5
+  pmax 1d-5
+  pdir y
+  ...
+end
+
+To create a continuous wave excitation of w0 = 0.12 au, you could just use a very large
+width, and pick the center to be in the middle of the simulation
+
+rt_tddft
+  ...
+  tmax 1000.0	
+  ...
+  pcen 500.0
+  pwid 10000000.0
+  pmax 0.001
+  pdir x
+  pfreq 0.12
+  ...
+end
+  
+
+
+Outputs
+-------
+
+You can choose which time-dependent system properties to calculate
+(and print) using the "print" option.  Valid choices are:
+
+field	    - echo the applied electric field
+dipole      - the dipole moment of the system
+quadrupole  - the quadrupole moments of the system
+cputime     - the CPU at each time step
+moocc       - the molecular orbital occupations
+energy      - the energy of the system
+charge      - the charge of the system
+convergence - interpolation convergence info (if applicable)
+*           - print everything
+
+For example,
+
+rt_tddft
+  ...
+  print field dipole energy
+  ...
+end
+
+or
+
+rt_tddft
+  ...
+  print *
+  ...
+end   
+
+If "print" is not specified, the default is "dipole field energy".
+
+Also, you can specify the total number of data points to print using
+"nprints".  If nprints is greater than the number of time steps, it
+will print once per time step.  Otherwise it will only occasionally
+print.  
+
+For example, to print only 500 data points:
+
+rt_tddft
+  ...
+  nprints 500
+  ...
+end
+
+You can also use "*" to denote print at every time step:
+
+rt_tddft
+  ...
+  nprints *
+  ...
+end
+
+This is the default behavior if nprints is not specified.
+
+
+
+Runtime checks
+--------------
+
+You can do occasional checks (e.g., symmetries, charge, etc) by
+specifying "nchecks", which takes an integer or "*".
+
+rt_tddft
+  ...
+  nchecks 100
+  ...
+end
+
+As a bonus, at each checkpoint the estimated time remaining in the
+simulation will be printed.  By default, no checks are done.  Note
+that each check takes about the same time as a time step.
+
+Additionally, you can specify "checklvl" either 1,2,3 (low, med, high)
+to enable even more checks, at the cost of minor slowdown.
+
+rt_tddft
+  ...
+  checklvl 3
+  ...
+end
+
+Specifying checklvl is rarely required.
+
+
+
+Miscellaneous
+-------------
+
+The code performance can be profiled by the "prof" keyword, which will
+display how long each operation took.  This is rarely used unless you
+are debugging:
+
+rt_tddft
+  ...
+  prof
+  ...
+end
+
+
+You can skip all time propagation by using the "noprop" keyword.  This
+is useful when postprocessing density matrices (snapshots).
+
+rt_tddft
+  ...
+  noprop
+  ...
+end
+
+
+
+Snapshots
+---------
+
+If you are interested in making animations of the charge density ask
+me, the tools are all in place.
+
+
+
+
+Example - Absorption spectrum of H2^-
+-------------------------------------
+
+title "H2^-"
+
+scratch_dir /scratch
+permanent_dir ./perm
+
+start h2
+
+echo 
+
+geometry units angstroms noautosym noautoz nocenter
+  H    -0.36655     0.00000000    0.00000000
+  H     0.36655     0.00000000    0.00000000
+end
+
+charge -1
+
+basis
+  * library "6-31G**"
+end
+
+dft
+  xc b3lyp
+  mult 2
+end
+
+rt_tddft
+  dt 0.2d0
+  tmin 0.0
+  tmax 100.0
+
+  nprints *
+  nchecks 10
+
+  print dipole field energy charge
+
+  pcen 3.0
+  pwid 0.3
+  pmax 0.0001
+  pdir x
+
+  magnus interpol2 pseries
+end
+task dft rt_tddft
+

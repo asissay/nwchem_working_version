@@ -1,0 +1,51 @@
+Doxyfile:# Enable the USE_MATHJAX option to render LaTeX formulas using MathJax
+Doxyfile:# rendering instead of using prerendered bitmaps. Use this if you do not
+Doxyfile:# names that should be enabled during MathJax rendering.
+input/rt_tddft_input_abc.F:      double  precision :: rend, rstart 
+input/rt_tddft_input_abc.F:      logical :: lhave_rstart, lhave_rend
+input/rt_tddft_input_abc.F:        elseif (inp_compare(.false.,test,'rend')) then
+input/rt_tddft_input_abc.F:           if (.not. inp_f (rend)) call errquit (pname//
+input/rt_tddft_input_abc.F:     $          "rend takes a float",0,0)
+input/rt_tddft_input_abc.F:           lhave_rend = .true.
+input/rt_tddft_input_abc.F:         if (.not. lhave_rend)
+input/rt_tddft_input_abc.F:     $        ": must supply rend for ABC", 0, 0)
+input/rt_tddft_input_abc.F:      entry_name = "rt_tddft:abc:rend"
+input/rt_tddft_input_abc.F:      if (.not.rtdb_put(rtdb,entry_name,mt_dbl,1,rend))
+rtutils/rt_tddft_spatial_potential.F:      double precision :: abc_rend, abc_rstart   ! added 12/27/17
+rtutils/rt_tddft_spatial_potential.F:      double precision :: atom_rstart(ncenters), atom_rend(ncenters)
+rtutils/rt_tddft_spatial_potential.F:      if (.not. rtdb_get (rtdb, "rt_tddft:abc:rend",  
+rtutils/rt_tddft_spatial_potential.F:     $     mt_dbl, 1, abc_rend)) call errquit (pname// 
+rtutils/rt_tddft_spatial_potential.F:     $     "failed to read rend from rtdb", 0, RTDB_ERR)
+rtutils/rt_tddft_spatial_potential.F:     $        "x           y           z         rstart     rend"
+rtutils/rt_tddft_spatial_potential.F:!         atom_rend(ic) = abc_rend      !all atoms have same value
+rtutils/rt_tddft_spatial_potential.F:c$$$            tagstr = "rt_tddft:abc_rend_"//trim(tag) ! e.g. "rt_tddft_abc_rend_O"
+rtutils/rt_tddft_spatial_potential.F:c$$$     $           1, atom_rend(ic)))
+rtutils/rt_tddft_spatial_potential.F:c$$$     $        "failed to read rend for "//trim(tag), 0, RTDB_ERR)
+rtutils/rt_tddft_spatial_potential.F:            atom_rend(ic) = atom_rend(ic) * 1.889725989d0
+rtutils/rt_tddft_spatial_potential.F:     $              atom_rstart(ic), atom_rend(ic)
+rtutils/rt_tddft_spatial_potential.F:                     abc_width = atom_rend(ic) - atom_rstart(ic)
+rtutils/rt_tddft_spatial_potential.F:     $                       (r.le.atom_rend(ic))) then 
+rtutils/rt_tddft_spatial_potential.F:c$$$      abc_width = abc_rend - abc_rstart
+rtutils/rt_tddft_spatial_potential.F:c$$$               elseif (r1.gt.abc_rstart .and. r1.le.abc_rend) then 
+rtutils/rt_tddft_spatial_potential.F:c$$$               elseif (r2.gt.abc_rstart .and. r2.le.abc_rend) then 
+rtutils/rt_tddft_spatial_potential.F:c$$$               elseif (r3.gt.abc_rstart .and. r3.le.abc_rend) then 
+rtutils/rt_tddft_spatial_potential.F:      abc_width = abc_rend - abc_rstart
+rtutils/rt_tddft_spatial_potential.F:               elseif (r1.gt.abc_rstart .and. r1.le.abc_rend) then 
+rtutils/rt_tddft_spatial_potential.F:               elseif (r2.gt.abc_rstart .and. r2.le.abc_rend) then 
+rtutils/rt_tddft_spatial_potential.F:               elseif (r3.gt.abc_rstart .and. r3.le.abc_rend) then 
+rtutils/rt_tddft_spatial_potential.F:                     abc_width = atom_rend(ic) - atom_rstart(ic)
+rtutils/rt_tddft_spatial_potential.F:     $                       (r.le.atom_rend(ic))) then 
+rtutils/old_cap_code.F:      double precision :: atom_rstart(ncenters), atom_rend(ncenters)
+rtutils/old_cap_code.F:     $        "x           y           z         rstart     rend"
+rtutils/old_cap_code.F:!         atom_rend(ic) = abc_rend      !all atoms have same value
+rtutils/old_cap_code.F:            tagstr = "rt_tddft:abc_rend_"//trim(tag) ! e.g. "rt_tddft_abc_rend_O"
+rtutils/old_cap_code.F:     $           1, atom_rend(ic)))
+rtutils/old_cap_code.F:     $        "failed to read rend for "//trim(tag), 0, RTDB_ERR)
+rtutils/old_cap_code.F:            atom_rend(ic) = atom_rend(ic) * 1.889725989d0
+rtutils/old_cap_code.F:     $              atom_rstart(ic), atom_rend(ic)
+rtutils/old_cap_code.F:                     abc_width = atom_rend(ic) - atom_rstart(ic)
+rtutils/old_cap_code.F:     $                       (r.le.atom_rend(ic))) then 
+rtutils/old_cap_code.F:      abc_width = abc_rend - abc_rstart
+rtutils/old_cap_code.F:               elseif (r1.gt.abc_rstart .and. r1.le.abc_rend) then 
+rtutils/old_cap_code.F:               elseif (r2.gt.abc_rstart .and. r2.le.abc_rend) then 
+rtutils/old_cap_code.F:               elseif (r3.gt.abc_rstart .and. r3.le.abc_rend) then 

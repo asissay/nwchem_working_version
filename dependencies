@@ -1,0 +1,1 @@
+$(LIBRARY_PATH)(rt_tddft.o):	$(INCDIR)/util.fh $(INCDIR)/stdio.fh $(INCDIR)/rtdb.fh $(INCDIR)/msgids.fh ./headers/matutils.fh /work/adonay/nwchem/trunk/src/tools/install/include/mafdecls.fh ./headers/rt_tddft.fh /work/adonay/nwchem/trunk/src/tools/install/include/global.fh /work/adonay/nwchem/trunk/src/nwdft/include/cdft.fh $(INCDIR)/case.fh 
